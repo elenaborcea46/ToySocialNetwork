@@ -1,5 +1,13 @@
 ### IntelliJ IDEA ###
 
+# Gradle
+.gradle/
+/build/
+
+# Local database credentials
+/src/main/resources/config.properties
+
+# IntelliJ
 .idea/
 *.iml
 *.class
