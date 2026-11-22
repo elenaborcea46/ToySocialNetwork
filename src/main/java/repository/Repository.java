@@ -4,6 +4,7 @@ import domain.Entity;
 import exceptions.ValidationException;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.StreamSupport;
 
@@ -26,7 +27,7 @@ public interface Repository<ID, E extends Entity<ID>> {
      * @return the entity or null if it does not exist
      * @throws IllegalArgumentException if id is null
      */
-    E findOne(ID id);
+    Optional<E> findOne(ID id);
 
     /**
      * Returns all stored entities.
@@ -44,7 +45,7 @@ public interface Repository<ID, E extends Entity<ID>> {
      * @throws IllegalArgumentException if entity is null
      * @throws ValidationException if the entity is invalid
      */
-    E save(E entity);
+    Optional<E> save(E entity);
 
     /**
      * Deletes an entity by its identifier.
@@ -53,7 +54,7 @@ public interface Repository<ID, E extends Entity<ID>> {
      * @return the removed entity or null if it does not exist
      * @throws IllegalArgumentException if id is null
      */
-    E delete(ID id);
+    Optional<E> delete(ID id);
 
     /**
      * Updates an existing entity.
@@ -64,7 +65,7 @@ public interface Repository<ID, E extends Entity<ID>> {
      * @throws IllegalArgumentException if entity is null
      * @throws ValidationException if the entity is invalid
      */
-    E update(E entity);
+    Optional<E> update(E entity);
 
     /**
      * Returns all entities that satisfy the given predicate.

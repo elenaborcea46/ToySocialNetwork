@@ -37,7 +37,7 @@ public class RepositoryFactory {
      * @param validator validator for users
      * @return the created user repository
      */
-    public static Repository<Long, User> createUserRepository(RepositoryType type, String fileName, Validator<User> validator){
+    public static Repository<Long, User> createUserRepository(RepositoryType type, String fileName, Validator<User> validator, String url, String user, String password){
         if(type == null){
             throw new IllegalArgumentException("Repository type cannot be null");
         }
@@ -48,7 +48,7 @@ public class RepositoryFactory {
 
         suppliers.put(RepositoryType.FILE, () -> new UserFileRepository(fileName, validator));
 
-        suppliers.put(RepositoryType.DATABASE, () -> new UserDatabaseRepository(validator));
+        suppliers.put(RepositoryType.DATABASE, () -> new UserDatabaseRepository(validator, url, user, password));
 
         Supplier<Repository<Long, User>> supplier = suppliers.get(type);
 
@@ -68,7 +68,7 @@ public class RepositoryFactory {
      * @param validator validator for friendships
      * @return the created friendship repository
      */
-    public static Repository<Tuple<Long, Long>, Friendship> createFriendshipRepository(RepositoryType type, String fileName, Validator<Friendship> validator){
+    public static Repository<Tuple<Long, Long>, Friendship> createFriendshipRepository(RepositoryType type, String fileName, Validator<Friendship> validator,  String url, String user, String password){
 
         if(type == null){
             throw new IllegalArgumentException("Repository type cannot be null.");
@@ -80,7 +80,7 @@ public class RepositoryFactory {
 
         suppliers.put(RepositoryType.FILE, () -> new FriendshipFileRepository(fileName, validator));
 
-        suppliers.put(RepositoryType.DATABASE, () -> new FriendshipDatabaseRepository(validator));
+        suppliers.put(RepositoryType.DATABASE, () -> new FriendshipDatabaseRepository(validator, url, user, password));
 
         Supplier<Repository<Tuple<Long, Long>, Friendship>> supplier = suppliers.get(type);
 

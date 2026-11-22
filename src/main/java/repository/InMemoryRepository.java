@@ -4,7 +4,7 @@ import domain.Entity;
 import validation.Validator;
 import java.util.Map;
 import java.util.HashMap;
-
+import java.util.Optional;
 
 /**
  * Implements a generic repository using an in-memory map.
@@ -41,16 +41,17 @@ public class InMemoryRepository<ID, E extends Entity<ID>> implements Repository<
      * Finds an entity by its identifier.
      *
      * @param id identifier to search for
-     * @return the entity or null if it does not exist
+     * @return an Optional containing the entity,
+     *         or an empty Optional if it does not exist
      * @throws IllegalArgumentException if id is null
      */
     @Override
-    public E findOne(ID id){
+    public Optional<E> findOne(ID id){
         if(id == null){
             throw new IllegalArgumentException("ID cannot be null.");
         }
 
-        return entities.get(id);
+        return Optional.ofNullable(entities.get(id));
     }
 
 
@@ -69,11 +70,11 @@ public class InMemoryRepository<ID, E extends Entity<ID>> implements Repository<
      * Saves a new entity after validation.
      *
      * @param entity entity to save
-     * @return null if saved successfully,
-     *         otherwise the existing entity
+     * @return an empty Optional if saved successfully,
+     *         or an Optional containing the existing entity
      */
     @Override
-    public E save(E entity){
+    public Optional<E> save(E entity){
         if(entity == null){
             throw new IllegalArgumentException("Entity cannot be null.");
         }
@@ -81,27 +82,28 @@ public class InMemoryRepository<ID, E extends Entity<ID>> implements Repository<
         validator.validate(entity);
 
         if(entities.containsKey(entity.getId())){
-            return entities.get(entity.getId());
+            return Optional.of(entities.get(entity.getId()));
         }
 
         entities.put(entity.getId(), entity);
-        return null;
+        return Optional.empty();
     }
 
     /**
      * Deletes an entity by its identifier.
      *
      * @param id identifier of the entity to delete
-     * @return removed entity or null if not found
+     * @return an Optional containing the removed entity,
+     *         or an empty Optional if not found
      * @throws IllegalArgumentException if id is null
      */
     @Override
-    public E delete(ID id){
+    public Optional<E> delete(ID id){
         if(id == null){
             throw new IllegalArgumentException("ID cannot be null.");
         }
 
-        return entities.remove(id);
+        return Optional.ofNullable(entities.remove(id));
     }
 
 
@@ -109,11 +111,13 @@ public class InMemoryRepository<ID, E extends Entity<ID>> implements Repository<
      * Updates an existing entity after validation.
      *
      * @param entity entity containing updated data
-     * @return null if updated successfully,
-     *         otherwise the provided entity
+     * @return an empty Optional if updated successfully,
+     *         or an Optional containing the provided entity
+     *         if its identifier does not exist
+     *
      */
     @Override
-    public E update(E entity){
+    public Optional<E> update(E entity){
         if(entity == null){
             throw new IllegalArgumentException("Entity cannot be null.");
         }
@@ -121,10 +125,10 @@ public class InMemoryRepository<ID, E extends Entity<ID>> implements Repository<
         validator.validate(entity);
 
         if(!entities.containsKey(entity.getId())){
-            return entity;
+            return Optional.of(entity);
         }
 
         entities.put(entity.getId(), entity);
-        return null;
+        return Optional.empty();
     }
 }

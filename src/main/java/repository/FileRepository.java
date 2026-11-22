@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.stream.IntStream;
 import java.util.List;
 import java.util.stream.StreamSupport;
@@ -100,9 +101,9 @@ public abstract class FileRepository<ID, E extends Entity<ID>> extends InMemoryR
                         try{
                             E entity = extractEntity(line);
 
-                            E existing = super.save(entity);
+                            Optional<E> existing = super.save(entity);
 
-                            if(existing != null){
+                            if(existing.isPresent()){
                                 throw new FileException("ID duplicat la linia " + lineNumber + " din fisierul" + fileName, null);
                             }
                         } catch(RuntimeException e){
@@ -144,18 +145,19 @@ public abstract class FileRepository<ID, E extends Entity<ID>> extends InMemoryR
      * contents are written to the persistence file.</p>
      *
      * @param entity the entity to save
-     * @return null if saved successfully, or the existing entity
-     *         if an entity with the same identifier already exists
+     * @return an empty Optional if saved successfully,
+     *         or an Optional containing the existing entity
+     *         if its identifier is already present
      * @throws IllegalArgumentException if the entity is null
      * @throws exceptions.ValidationException if the entity is invalid
      * @throws exceptions.RepositoryException if writing to the file fails
      */
     @Override
-    public E save(E entity){
+    public Optional<E> save(E entity){
 
-        E result = super.save(entity);
+        Optional<E> result = super.save(entity);
 
-        if(result == null){
+        if(result.isEmpty()){
             writeToFile();
         }
         return result;
@@ -170,15 +172,16 @@ public abstract class FileRepository<ID, E extends Entity<ID>> extends InMemoryR
      * repository contents are written to the persistence file.</p>
      *
      * @param id the identifier of the entity to delete
-     * @return the deleted entity, or null if the entity does not exist
+     * @return   an Optional containing the deleted entity,
+     *           or an empty Optional if the entity does not exist
      * @throws IllegalArgumentException if the identifier is null
      * @throws exceptions.RepositoryException if writing to the file fails
      */
     @Override
-    public E delete(ID id){
-        E result = super.delete(id);
+    public Optional<E> delete(ID id){
+        Optional<E> result = super.delete(id);
 
-        if(result != null){
+        if(result.isPresent()){
             writeToFile();
         }
         return result;
@@ -193,17 +196,18 @@ public abstract class FileRepository<ID, E extends Entity<ID>> extends InMemoryR
      * contents are written to the persistence file.</p>
      *
      * @param entity the entity containing the updated information
-     * @return null if updated successfully, or the provided entity
-     *         if its identifier does not exist
+     * @return   an empty Optional if updated successfully,
+     * *         or an Optional containing the provided entity
+     * *         if its identifier does not exist
      * @throws IllegalArgumentException if the entity is null
      * @throws exceptions.ValidationException if the entity is invalid
      * @throws exceptions.RepositoryException if writing to the file fails
      */
     @Override
-    public E update(E entity){
-        E result = super.update(entity);
+    public Optional<E> update(E entity){
+        Optional<E> result = super.update(entity);
 
-        if(result == null){
+        if(result.isEmpty()){
             writeToFile();
         }
 

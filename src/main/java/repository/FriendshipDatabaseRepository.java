@@ -4,6 +4,14 @@ import domain.Friendship;
 import domain.Tuple;
 import validation.Validator;
 
+import java.sql.*;
+import java.sql.DriverManager;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import exceptions.RepositoryException;
+
 /**
  * Defines a database repository placeholder for friendship entities.
  *
@@ -16,14 +24,21 @@ import validation.Validator;
 public class FriendshipDatabaseRepository implements Repository<Tuple<Long, Long>, Friendship>{
 
     private final Validator<Friendship> validator;
+    private final String url;
+    private final String user;
+    private final String password;
 
     /**
      * Creates a database repository for friendships.
      *
      * @param validator validator for frienship entities
      */
-    public FriendshipDatabaseRepository(Validator<Friendship> validator) {
+    public FriendshipDatabaseRepository(Validator<Friendship> validator, String url, String user, String password) {
+
         this.validator = validator;
+        this.url = url;
+        this.user = user;
+        this.password = password;
     }
 
 
@@ -34,66 +49,215 @@ public class FriendshipDatabaseRepository implements Repository<Tuple<Long, Long
      * the identifiers of the two users involved in the relationship.</p>
      *
      * @param id the tuple identifying the friendship to retrieve
-     * @return the matching friendship, or null if no friendship
-     *         with the specified identifier exists
-     * @throws UnsupportedOperationException if database operations
-     *         are not implemented yet
+     * @return an Optional containing the friendship,
+     *         or an empty Optional if it does not exist
+     * @throws IllegalArgumentException if the identifier or its components are null
+     * @throws RepositoryException if a database error occurs
      */
     @Override
-    public Friendship findOne(Tuple<Long, Long> id){
-        throw new UnsupportedOperationException("Database operations are not implemented yet.");
+    public Optional<Friendship> findOne(Tuple<Long, Long> id){
+           if(id == null || id.getFirst() == null || id.getSecond() == null){
+               throw new IllegalArgumentException("Friendship ID cannot be null.");
+           }
+
+           Long id1 = Math.min(id.getFirst(), id.getSecond());
+           Long id2 = Math.max(id.getFirst(), id.getSecond());
+
+           String sql = "SELECT id1, id2, friends_from FROM friendships WHERE id1 = ? AND id2 = ?";
+
+           try(Connection connection = DriverManager.getConnection(url, user, password);
+               PreparedStatement statement = connection.prepareStatement(sql)){
+               statement.setLong(1, id1);
+               statement.setLong(2, id2);
+
+               try(ResultSet resultSet = statement.executeQuery()){
+
+                   if(resultSet.next()){
+                       Long userId1 = resultSet.getLong("id1");
+                       Long userId2 = resultSet.getLong("id2");
+
+                       LocalDateTime friendsFrom = resultSet.getTimestamp("friends_from").toLocalDateTime();
+
+                       return Optional.of(new Friendship(userId1, userId2, friendsFrom));
+                   }
+
+                   return Optional.empty();
+
+               }
+           } catch(SQLException e){
+               throw new RepositoryException("Error finding friendship with ID " + id, e);
+           }
     }
 
     /**
      * Retrieves all friendships stored in the database.
      *
-     * @return an iterable collection of friendships
-     * @throws UnsupportedOperationException if database operations
-     *         are not implemented yet
+     *  @return an iterable collection of friendships,
+     *          or an empty collection if no friendships exist
+     *  @throws RepositoryException if a database error occurs
      */
     @Override
     public Iterable<Friendship> findAll(){
-        throw new UnsupportedOperationException("Database operations are not implemented yet.");
+        List<Friendship> friendships = new ArrayList<>();
+
+        String sql = "SELECT id1, id2, friends_from FROM friendships";
+
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+
+            while (resultSet.next()) {
+                Long id1 = resultSet.getLong("id1");
+                Long id2 = resultSet.getLong("id2");
+
+                LocalDateTime friendsFrom =
+                        resultSet.getTimestamp("friends_from").toLocalDateTime();
+
+                friendships.add(new Friendship(id1, id2, friendsFrom));
+            }
+
+        } catch (SQLException e) {
+            throw new RepositoryException(
+                    "Error retrieving friendships from database.", e
+            );
+        }
+
+        return friendships;
     }
 
     /**
      * Saves a new friendship in the database.
      *
      * @param entity the friendship to save
-     * @return null if saved successfully, or the existing friendship
+     * @return an empty Optional if saved successfully,
+     *         or an Optional containing the existing friendship
      *         if its identifier is already present
-     * @throws UnsupportedOperationException if database operations
-     *         are not implemented yet
+     * @throws IllegalArgumentException if the entity is null
+     * @throws RepositoryException if a database error occurs
      */
     @Override
-    public Friendship save(Friendship entity){
-        throw new UnsupportedOperationException("Database operations are not implemented yet.");
+    public Optional<Friendship> save(Friendship entity){
+        if (entity == null) {
+            throw new IllegalArgumentException("Friendship cannot be null.");
+        }
+
+        validator.validate(entity);
+
+        Optional<Friendship> existingFriendship = findOne(entity.getId());
+
+        if (existingFriendship.isPresent()) {
+            return existingFriendship;
+        }
+
+        String sql = "INSERT INTO friendships(id1, id2, friends_from) VALUES(?, ?, ?)";
+
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setLong(1, entity.getIdUser1());
+            statement.setLong(2, entity.getIdUser2());
+            statement.setTimestamp(3, Timestamp.valueOf(entity.getFriendsFrom()));
+
+            int rowsAffected = statement.executeUpdate();
+
+            if (rowsAffected != 1) {
+                throw new RepositoryException("Friendship was not inserted.");
+            }
+
+            return Optional.empty();
+
+        } catch (SQLException e) {
+            throw new RepositoryException(
+                    "Error saving friendship to database.", e
+            );
+        }
     }
 
     /**
      * Deletes a friendship from the database using its identifier.
      *
      * @param id the tuple identifying the friendship to delete
-     * @return the deleted friendship, or null if it does not exist
-     * @throws UnsupportedOperationException if database operations
-     *         are not implemented yet
+     * @return an Optional containing the deleted friendship,
+     *         or an empty Optional if the friendship does not exist
+     * @throws IllegalArgumentException if the identifier or its components are null
+     * @throws RepositoryException if a database error occurs
      */
     @Override
-    public Friendship delete(Tuple<Long, Long> id){
-        throw new UnsupportedOperationException("Database operations are not implemented yet.");
+    public Optional<Friendship> delete(Tuple<Long, Long> id){
+        if (id == null || id.getFirst() == null || id.getSecond() == null) {
+            throw new IllegalArgumentException("Friendship ID cannot be null.");
+        }
+
+        Optional<Friendship> existingFriendship = findOne(id);
+
+        if (existingFriendship.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Friendship friendship = existingFriendship.get();
+
+        String sql = "DELETE FROM friendships WHERE id1 = ? AND id2 = ?";
+
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setLong(1, friendship.getIdUser1());
+            statement.setLong(2, friendship.getIdUser2());
+
+            int rowsAffected = statement.executeUpdate();
+
+            if (rowsAffected == 0) {
+                return Optional.empty();
+            }
+
+            return Optional.of(friendship);
+
+        } catch (SQLException e) {
+            throw new RepositoryException(
+                    "Error deleting friendship with ID " + id, e
+            );
+        }
     }
 
     /**
      * Updates an existing friendship in the database.
      *
      * @param entity the friendship containing the updated information
-     * @return null if updated successfully, or the provided friendship
+     * @return an empty Optional if updated successfully,
+     *         or an Optional containing the provided friendship
      *         if its identifier does not exist
-     * @throws UnsupportedOperationException if database operations
-     *         are not implemented yet
+     * @throws IllegalArgumentException if the entity is null
+     * @throws RepositoryException if a database error occurs
      */
     @Override
-    public Friendship update(Friendship entity){
-        throw new UnsupportedOperationException("Database operations are not implemented yet.");
+    public Optional<Friendship> update(Friendship entity){
+        if (entity == null) {
+            throw new IllegalArgumentException("Friendship cannot be null.");
+        }
+
+        validator.validate(entity);
+
+        String sql = "UPDATE friendships SET friends_from = ? WHERE id1 = ? AND id2 = ?";
+
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setTimestamp(1, Timestamp.valueOf(entity.getFriendsFrom()));
+            statement.setLong(2, entity.getIdUser1());
+            statement.setLong(3, entity.getIdUser2());
+
+            int rowsAffected = statement.executeUpdate();
+
+            if (rowsAffected == 0) {
+                return Optional.of(entity);
+            }
+
+            return Optional.empty();
+
+        } catch (SQLException e) {
+            throw new RepositoryException(
+                    "Error updating friendship with ID " + entity.getId(), e
+            );
+        }
     }
 }
