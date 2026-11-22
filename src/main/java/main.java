@@ -1,3 +1,4 @@
+import database.DatabaseConnection;
 import domain.Friendship;
 import domain.Tuple;
 import domain.User;
@@ -23,6 +24,9 @@ import validation.Validator;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.Properties;
 
 /**
@@ -116,10 +120,14 @@ public class main {
                 friendshipsFile = getRequiredProperty(properties, "friendships.file");
             }
 
+            String url = null;
+            String username = null;
+            String password = null;
+
             if(type ==  RepositoryType.DATABASE){
-                getRequiredProperty(properties, "db.url");
-                getRequiredProperty(properties, "db.user");
-                getRequiredProperty(properties, "db.password");
+                url = getRequiredProperty(properties, "db.url");
+                username = getRequiredProperty(properties, "db.user");
+                password = getRequiredProperty(properties, "db.password");
             }
 
             Validator<User> userValidator = new UserValidator();
@@ -134,13 +142,14 @@ public class main {
 
             Validator<Friendship> friendshipValidator = new FriendshipValidator();
 
-            Repository<Long, User> userRepository = RepositoryFactory.createUserRepository(type, usersFile, combinedValidator);
+            Repository<Long, User> userRepository = RepositoryFactory.createUserRepository(type, usersFile, combinedValidator, url, username, password);
 
-            Repository<Tuple<Long, Long>, Friendship> friendshipRepository = RepositoryFactory.createFriendshipRepository(type, friendshipsFile, friendshipValidator);
+            Repository<Tuple<Long, Long>, Friendship> friendshipRepository = RepositoryFactory.createFriendshipRepository(type, friendshipsFile, friendshipValidator, url, username, password);
 
             UserService userService = new UserService(
                     userRepository,
-                    friendshipRepository
+                    friendshipRepository,
+                    type == RepositoryType.DATABASE
             );
 
             FriendshipService friendshipService = new FriendshipService(
@@ -163,6 +172,19 @@ public class main {
                     friendshipService,
                     networkService
             );
+
+            if (type == RepositoryType.DATABASE) {
+                try (Connection connection =
+                             DriverManager.getConnection(url, username, password)) {
+
+                    System.out.println("Connected to PostgreSQL successfully");
+
+                } catch (SQLException e) {
+                    throw new RepositoryException(
+                            "Database connection failed: " + e.getMessage()
+                    );
+                }
+            }
 
             ui.run();
         } catch (IllegalArgumentException e){
