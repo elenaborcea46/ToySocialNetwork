@@ -30,16 +30,17 @@ public class UserService {
 
     private final Repository<Tuple<Long, Long>, Friendship> friendshipRepository;
 
-
+    private final boolean databaseGeneratedIds;
     /**
      * Creates a user service using the specified repositories.
      *
      * @param userRepository the repository containing users
      * @param friendshipRepository the repository containing friendships
      */
-    public UserService(Repository<Long, User> userRepository, Repository<Tuple<Long, Long>, Friendship> friendshipRepository) {
+    public UserService(Repository<Long, User> userRepository, Repository<Tuple<Long, Long>, Friendship> friendshipRepository, boolean databaseGeneratedIds) {
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
+        this.databaseGeneratedIds = databaseGeneratedIds;
     }
 
 
@@ -67,17 +68,17 @@ public class UserService {
      */
     public Long addUser(String firstName, String lastName) {
 
-        Long id = generateNextId();
+        Long id = databaseGeneratedIds ? null : generateNextId();
 
-        User user = new User(id,firstName, lastName);
+        User user = new User(id, firstName, lastName);
 
-        User result = userRepository.save(user);
+        Optional<User> result = userRepository.save(user);
 
-        if(result!=null){
+        if(result.isPresent()){
             throw new RepositoryException("A user with this ID already exists.");
         }
 
-        return id;
+        return user.getId();
     }
 
 
@@ -102,6 +103,25 @@ public class UserService {
 
     }
 
+    /**
+     * Updates an existing user's information.
+     *
+     * @param id the identifier of the user to update
+     * @param firstName the user's first name
+     * @param lastName the user's last name
+     * @throws RepositoryException  if the user does not exist
+     */
+    public void updateUser(Long id, String firstName, String lastName){
+
+        User user = new User(id, firstName, lastName);
+
+        Optional<User> result = userRepository.update(user);
+
+        if(result.isPresent()){
+            throw new RepositoryException("Nu exista utilizatorul cu ID-ul " + id);
+        }
+    }
+
 
     /**
      * Finds a user by their identifier.
@@ -112,7 +132,7 @@ public class UserService {
      */
     public User findUser(Long id){
 
-        return Optional.ofNullable(userRepository.findOne(id)).orElseThrow(() -> new RepositoryException("Nu exista utilizatorul cu ID-ul " + id));
+        return userRepository.findOne(id).orElseThrow(() -> new RepositoryException("Nu exista utilizatorul cu ID-ul " + id));
     }
 
 

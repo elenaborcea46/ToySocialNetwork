@@ -32,7 +32,7 @@ public class UserValidator implements Validator<User>{
             throw new ValidationException("Utilizatorul nu poate fi null!");
         }
 
-        if(user.getId() == null || user.getId() <= 0){
+        if(user.getId() != null && user.getId() <= 0){
             throw new ValidationException("ID-ul trebuie sa fie pozitiv!");
         }
 

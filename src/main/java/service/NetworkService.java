@@ -64,8 +64,8 @@ public class NetworkService {
             Long id1 = friendship.getIdUser1();
             Long id2 = friendship.getIdUser2();
 
-            if (userRepository.findOne(id1) == null ||
-                    userRepository.findOne(id2) == null) {
+            if (userRepository.findOne(id1).isEmpty() ||
+                    userRepository.findOne(id2).isEmpty()) {
 
                 throw new RepositoryException(
                         "Friendship " + friendship.getId()
@@ -174,7 +174,6 @@ public class NetworkService {
      * @return the maximum path length measured in edges
      */
     private int longestPathDFS(Long node, Map<Long, List<Long>> graph, Set<Long> visited){
-        visited.add(node);
 
         visited.add(node);
 

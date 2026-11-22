@@ -9,6 +9,10 @@ import exceptions.RepositoryException;
 import exceptions.ValidationException;
 
 import criteria.UserCriteria;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.function.Predicate;
 
 import java.util.Scanner;
@@ -55,13 +59,15 @@ public class ConsoleUI {
         System.out.println("\n===== TOY SOCIAL NETWORK =====");
         System.out.println("1. Adauga utilizator");
         System.out.println("2. Sterge utilizator");
-        System.out.println("3. Afiseaza utilizatori");
-        System.out.println("4. Adauga prietenie");
-        System.out.println("5. Sterge prietenie");
-        System.out.println("6. Afiseaza prietenii");
-        System.out.println("7. Numar comunitati");
-        System.out.println("8. Cea mai sociabila comunitate");
-        System.out.println("9. Testare filtrare utilizatori");
+        System.out.println("3. Modifica utilizator");
+        System.out.println("4. Afiseaza utilizatori");
+        System.out.println("5. Adauga prietenie");
+        System.out.println("6. Sterge prietenie");
+        System.out.println("7. Modifica prietenie");
+        System.out.println("8. Afiseaza prietenii");
+        System.out.println("9. Numar comunitati");
+        System.out.println("10. Cea mai sociabila comunitate");
+        System.out.println("11. Testare filtrare utilizatori");
         System.out.println("0. Iesire");
         System.out.print("Alege o optiune: ");
     }
@@ -106,6 +112,20 @@ public class ConsoleUI {
         System.out.println("Utilizator sters cu succes!");
     }
 
+    private void updateUser(){
+        Long id = readLong("ID utilizator: ");
+
+        System.out.println("Prenume nou:");
+        String firstName = scanner.nextLine();
+
+        System.out.println("Nume nou:");
+        String lastName = scanner.nextLine();
+
+        userService.updateUser(id, firstName, lastName);
+
+        System.out.println("Utilizator modificat cu succes!");
+    }
+
     /**
      * Displays all users registered in the social network.
      */
@@ -139,6 +159,29 @@ public class ConsoleUI {
         friendshipService.removeFriendship(idUser1, idUser2);
 
         System.out.println("Prietenie stearsa cu succes!");
+    }
+
+    private void updateFriendship(){
+        Long idUser1 = readLong("ID primul utilizator: ");
+        Long idUser2 = readLong("ID al doilea utilizator: ");
+
+        System.out.println("Data noua (yyyy-MM-dd HH:mm): ");
+        String dateInput = scanner.nextLine();
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+        LocalDateTime friendsFrom;
+
+        try{
+            friendsFrom = LocalDateTime.parse(dateInput, formatter);
+        }catch(DateTimeParseException e){
+            throw new IllegalArgumentException("Format invalid! Foloseste yyyy-MM-dd HH:mm");
+        }
+
+        friendshipService.updateFriendship(idUser1, idUser2, friendsFrom);
+
+        System.out.println("Prietenie modificata cu succes!");
+
     }
 
 
@@ -201,33 +244,39 @@ public class ConsoleUI {
                         removeUser();
                         break;
                     case "3":
-                        printUsers();
+                        updateUser();
                         break;
                     case "4":
-                        addFriendship();
+                        printUsers();
                         break;
                     case "5":
-                        removeFriendship();
+                        addFriendship();
                         break;
                     case "6":
+                        removeFriendship();
+                        break;
+                    case "7":
+                        updateFriendship();
+                        break;
+                    case "8":
                         printFriendships();
                         break;
 
-                    case "7":
+                    case "9":
                         System.out.println(
                             "Numar comunitati: " +
                                     networkService.getNumberOfCommunities()
                     );
                         break;
 
-                    case "8":
+                    case "10":
                         System.out.println(
                             "Cea mai sociabila comunitate: " +
                                     networkService.getMostSociableCommunity()
                     );
                         break;
 
-                    case "9":
+                    case "11":
                         testUserFilters();
                         break;
 

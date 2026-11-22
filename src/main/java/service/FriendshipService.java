@@ -8,6 +8,7 @@ import exceptions.ValidationException;
 import repository.Repository;
 import validation.Validator;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 
@@ -53,21 +54,21 @@ public class FriendshipService {
         Friendship friendship = new Friendship(idUser1, idUser2);
 
 
-        Optional<User> user1 = Optional.ofNullable(userRepository.findOne(idUser1));
+        Optional<User> user1 = userRepository.findOne(idUser1);
 
-        Optional<User> user2 = Optional.ofNullable(userRepository.findOne(idUser2));
+        Optional<User> user2 = userRepository.findOne(idUser2);
 
         if(user1.isEmpty() || user2.isEmpty()){
             throw new RepositoryException("Ambii utilizatori trebuie sa existe!");
         }
 
-        if(findFriendship(idUser1, idUser2) != null){
+        if(findFriendship(idUser1, idUser2).isPresent()){
             throw new RepositoryException("Cei doi utilizatori sunt deja prieteni!");
         }
 
-        Friendship result = friendshipRepository.save(friendship);
+        Optional<Friendship> result = friendshipRepository.save(friendship);
 
-        if(result != null){
+        if(result.isPresent()){
             throw new RepositoryException("These users are already friends.");
         }
     }
@@ -81,7 +82,7 @@ public class FriendshipService {
      */
     public void removeFriendship(Long idUser1, Long idUser2){
 
-        Friendship friendship = Optional.ofNullable(findFriendship(idUser1, idUser2)).orElseThrow( () -> new RepositoryException("Prietenia nu exista!"));
+        Friendship friendship = findFriendship(idUser1, idUser2).orElseThrow( () -> new RepositoryException("Prietenia nu exista!"));
 
         friendshipRepository.delete(friendship.getId());
     }
@@ -95,7 +96,7 @@ public class FriendshipService {
      * @param idUser2 second user identifier
      * @return the friendship or null if not found
      */
-    public Friendship findFriendship(Long idUser1, Long idUser2){
+    public Optional<Friendship> findFriendship(Long idUser1, Long idUser2){
 
        if(idUser1 == null || idUser2 == null){
            throw new IllegalArgumentException("User IDs cannot be null.");
@@ -119,5 +120,15 @@ public class FriendshipService {
      */
     public Iterable<Friendship> getAllFriendships(){
         return friendshipRepository.findAll();
+    }
+
+    public void updateFriendship(Long idUser1, Long idUser2, LocalDateTime friendsFrom){
+        Friendship friendship = new Friendship(idUser1, idUser2, friendsFrom);
+
+        Optional<Friendship> result = friendshipRepository.update(friendship);
+
+        if(result.isPresent()){
+            throw new RepositoryException("Prietenia nu exista!");
+        }
     }
 }
