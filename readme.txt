@@ -1,109 +1,243 @@
-ToySocialNetwork – Laboratorul 3 MAP
+# ToySocialNetwork
 
-1. Descrierea aplicației
+A Java console application for managing users, friendships, and social network communities.
 
-ToySocialNetwork este o aplicație Java care permite gestionarea utilizatorilor și a relațiilor de prietenie dintre aceștia.
+The project was developed as part of the **Advanced Programming Methods (MAP)** laboratory at Babeș-Bolyai University, Faculty of Mathematics and Computer Science.
 
-Aplicația oferă operații CRUD pentru utilizatori și prietenii și permite analiza rețelei sociale prin intermediul algoritmilor pe grafuri, precum determinarea numărului de comunități și identificarea celei mai sociabile comunități.
+## Features
 
-Proiectul este organizat pe mai multe niveluri: domain, validation, repository, service și ui, fiecare având responsabilități distincte.
+### User Management
+- Add users with automatically generated IDs.
+- Delete existing users.
+- Display all registered users.
+- Filter users using different criteria.
 
-2. RepositoryFactory și trecerea la baza de date
+### Friendship Management
+- Create friendships between existing users.
+- Delete friendships.
+- Display all friendships.
+- Prevent duplicate friendships.
+- Store the date and time when a friendship was created.
+- Automatically remove associated friendships when a user is deleted.
 
-Clasa `RepositoryFactory` implementează șablonul Simple Factory și centralizează crearea repository-urilor.
+### Social Network Analysis
+- Calculate the number of connected communities in the network.
+- Identify the most sociable community based on the longest simple path.
+- Represent friendships as an undirected graph.
+- Use Depth-First Search (DFS) for graph traversal.
 
-Tipul de repository este stabilit prin proprietatea `repository.type` din fișierul `config.properties`.
+### Data Persistence
+The application supports three repository implementations:
 
-Sunt disponibile trei opțiuni:
+| Repository | Description |
+|---|---|
+| In-Memory | Stores entities in memory during execution. |
+| File | Persists users and friendships in text files. |
+| Database | Stores users and friendships in PostgreSQL using JDBC. |
 
-- `MEMORY` – datele sunt păstrate în memorie, folosind `InMemoryRepository`.
-- `FILE` – datele sunt păstrate în memorie și persistate în fișiere text, folosind `UserFileRepository` și `FriendshipFileRepository`.
-- `DATABASE` – este rezervată pentru implementarea persistenței într-o bază de date.
+The repository implementation can be selected through application configuration.
 
-Metodele din `UserDatabaseRepository` și `FriendshipDatabaseRepository` nu sunt încă implementate și aruncă `UnsupportedOperationException`.
+## Technologies
 
-Pentru trecerea la baza de date trebuie implementate operațiile repository-urilor folosind JDBC și interogări SQL, configurată conexiunea prin proprietățile `db.url`, `db.user` și `db.password` și selectată opțiunea `DATABASE`.
+- **Java 21**
+- **Gradle**
+- **PostgreSQL**
+- **JDBC**
+- **Git & GitHub**
+- **IntelliJ IDEA**
 
-Serviciile nu trebuie rescrise, deoarece utilizează interfața generică `Repository`, independent de mecanismul de stocare.
+## Project Architecture
 
-3. Tratarea fișierelor lipsă și a liniilor corupte
+The application follows a layered architecture to separate responsibilities.
 
-Persistența în fișiere este implementată prin `FileRepository` și clasele sale derivate.
+```text
+src/main/
+├── java/
+│   ├── domain/
+│   │   ├── Entity.java
+│   │   ├── User.java
+│   │   ├── Friendship.java
+│   │   └── Tuple.java
+│   ├── validation/
+│   │   ├── Validator.java
+│   │   ├── UserValidator.java
+│   │   └── FriendshipValidator.java
+│   ├── repository/
+│   │   ├── Repository.java
+│   │   ├── InMemoryRepository.java
+│   │   ├── FileRepository.java
+│   │   ├── UserFileRepository.java
+│   │   ├── FriendshipFileRepository.java
+│   │   ├── UserDatabaseRepository.java
+│   │   ├── FriendshipDatabaseRepository.java
+│   │   └── RepositoryFactory.java
+│   ├── service/
+│   │   ├── UserService.java
+│   │   ├── FriendshipService.java
+│   │   └── NetworkService.java
+│   ├── ui/
+│   │   └── ConsoleUI.java
+│   └── main.java
+└── resources/
+    ├── config.properties
+    └── config.example.properties
+```
 
-Dacă fișierul de date nu există la inițializare, repository-ul pornește cu o colecție goală. Fișierul este creat la prima operație de salvare care necesită persistență.
+Additional configuration, exception, and repository-related classes are included in the project.
 
-La citire, fiecare linie este transformată într-o entitate prin metoda `extractEntity()` și este validată înainte de introducerea în repository.
+### Architecture Layers
 
-Dacă o linie conține date invalide, un format incorect sau un identificator duplicat, încărcarea este întreruptă și este raportată o excepție care indică problema și linia corespunzătoare.
+**Domain Layer:** Defines entities and their relationships.
 
-Am ales această abordare de tip *fail-fast* pentru a evita pornirea aplicației cu date incomplete sau inconsistente.
+**Validation Layer:** Ensures that entities satisfy application rules.
 
-La operațiile de adăugare, ștergere și actualizare, modificările efectuate cu succes sunt salvate în fișier prin metoda `writeToFile()`.
+**Repository Layer:** Provides CRUD operations through interchangeable persistence implementations.
 
-4. Principii SOLID
+**Service Layer:** Implements business logic and social network analysis.
 
-### SRP – Single Responsibility Principle
+**UI Layer:** Provides a console-based interface for interacting with the application.
 
-Fiecare clasă are o responsabilitate principală.
+## Database Structure
 
-Clasele din `domain` reprezintă entitățile, validatorii verifică regulile de validare, repository-urile gestionează stocarea datelor, serviciile implementează logica aplicației, iar `ConsoleUI` gestionează interacțiunea cu utilizatorul.
+The PostgreSQL database is named `socialnetwork` and contains two main tables.
 
-### OCP – Open/Closed Principle
+### Users
 
-Aplicația poate fi extinsă cu noi mecanisme de persistență fără modificarea logicii serviciilor.
+```sql
+CREATE TABLE users (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL
+);
+```
 
-De exemplu, se poate implementa un repository pentru o bază de date care respectă interfața `Repository`.
+User IDs are generated automatically by PostgreSQL.
 
-Pentru selectarea unui nou tip de repository este necesară și extinderea configurației și a clasei `RepositoryFactory`.
+### Friendships
 
-### DIP – Dependency Inversion Principle
+```sql
+CREATE TABLE friendships (
+    id1 BIGINT NOT NULL,
+    id2 BIGINT NOT NULL,
+    friends_from TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-Clasele din nivelul service depind de abstracția `Repository`, nu de implementările concrete `InMemoryRepository`, `FileRepository` sau `DatabaseRepository`.
+    PRIMARY KEY (id1, id2),
 
-Astfel, mecanismul de persistență poate fi schimbat fără modificarea operațiilor de business.
+    FOREIGN KEY (id1)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
 
-### LSP – Liskov Substitution Principle
+    FOREIGN KEY (id2)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
 
-Implementările repository-urilor trebuie să poată înlocui interfața `Repository`, respectând contractul operațiilor definite de aceasta.
+    CHECK (id1 < id2)
+);
+```
 
-`InMemoryRepository` și `FileRepository` oferă implementări ale aceluiași contract.
+Friendships are undirected. User IDs are normalized to ensure that `(A, B)` and `(B, A)` represent the same relationship.
 
-Repository-urile pentru baze de date sunt momentan doar schelete și nu respectă încă funcționalitatea completă a contractului, deoarece operațiile lor aruncă `UnsupportedOperationException`.
+The database enforces referential integrity and automatically removes associated friendships when a user is deleted.
 
-5. Șabloane de proiectare
+## Configuration
 
-### Factory – RepositoryFactory
+Create a `config.properties` file based on `config.example.properties`.
 
-Clasa `RepositoryFactory` creează repository-urile concrete în funcție de tipul de stocare configurat.
+Configure the repository type and PostgreSQL connection details using the property names expected by the application.
 
-Acest șablon separă logica de creare a obiectelor de logica aplicației.
+For database persistence, the JDBC URL follows this format:
 
-### Template Method – FileRepository
+```properties
+jdbc.url=jdbc:postgresql://localhost:5432/socialnetwork
+jdbc.user=postgres
+jdbc.password=YOUR_PASSWORD
+```
 
-Clasa abstractă `FileRepository` definește mecanismul general de citire și scriere a entităților.
+Select the `DATABASE`, `FILE`, or `MEMORY` repository implementation using the project's repository configuration.
 
-Metodele `extractEntity()` și `createEntityAsString()` sunt implementate de `UserFileRepository` și `FriendshipFileRepository`, în funcție de formatul fiecărei entități.
+**Security:** Do not commit real database passwords or other credentials to GitHub. Keep `config.properties` out of version control and provide a safe example configuration instead.
 
-Astfel, algoritmul general de persistență este reutilizat, iar detaliile de conversie sunt particularizate în clasele derivate.
+## Running the Application
 
-### Strategy – Validator
+### Prerequisites
 
-Interfața `Validator<T>` definește o strategie generică de validare.
+- JDK 21
+- Gradle or the included Gradle Wrapper
+- PostgreSQL, when using database persistence
 
-Clasele `UserValidator` și `FriendshipValidator` implementează reguli diferite, iar repository-urile primesc validatorul corespunzător prin constructor.
+### Steps
 
-Astfel, logica de validare este separată de logica de stocare.
+1. Clone the repository.
+2. Open the project in IntelliJ IDEA.
+3. Configure the application properties.
+4. Create the PostgreSQL database and tables if using database persistence.
+5. Start the PostgreSQL server.
+6. Run the application's main class.
 
-### Decorator – Persistența în fișiere
+Alternatively, use the Gradle run task if configured in the project.
 
-`FileRepository` extinde funcționalitatea oferită de `InMemoryRepository` prin adăugarea persistenței în fișiere.
+## Console Menu
 
-Metodele `save()`, `delete()` și `update()` apelează implementarea din clasa părinte, apoi salvează modificările în fișier.
+```text
+===== TOY SOCIAL NETWORK =====
+1. Adauga utilizator
+2. Sterge utilizator
+3. Afiseaza utilizatori
+4. Adauga prietenie
+5. Sterge prietenie
+6. Afiseaza prietenii
+7. Numar comunitati
+8. Cea mai sociabila comunitate
+9. Testare filtrare utilizatori
+0. Iesire
+```
 
-Această abordare este asemănătoare cu Decorator prin adăugarea unei responsabilități suplimentare, dar nu reprezintă o implementare clasică a șablonului Decorator, deoarece folosește moștenirea, nu compoziția.
+## Graph Algorithms
 
-6. Concluzie
+The social network is modeled as an undirected graph:
 
-Arhitectura aplicației urmărește separarea responsabilităților, reutilizarea codului și reducerea dependențelor dintre componente.
+- **Vertices:** Users
+- **Edges:** Friendships
 
-Folosirea interfețelor generice, a repository-urilor interschimbabile și a șabloanelor de proiectare facilitează întreținerea și extinderea aplicației, inclusiv implementarea ulterioară a persistenței într-o bază de date.
+### Connected Communities
+
+DFS is used to identify connected components and calculate the number of communities in the network.
+
+### Most Sociable Community
+
+The application identifies the community containing the longest simple path, using DFS with backtracking.
+
+## Database Operations and Security
+
+The database repositories implement CRUD operations using JDBC.
+
+Key implementation details include:
+
+- `PreparedStatement` for parameterized SQL queries.
+- `ResultSet` for reading database records.
+- `executeQuery()` for SELECT operations.
+- `executeUpdate()` for INSERT, UPDATE, and DELETE operations.
+- `Optional<T>` for repository operation results.
+- Try-with-resources for automatic JDBC resource management.
+- Custom repository exceptions for database errors.
+
+### SQL Injection Protection
+
+User input is passed to SQL statements through `PreparedStatement` parameters rather than concatenated directly into SQL queries.
+
+For example, a name containing:
+
+```text
+'); DROP TABLE users; --
+```
+
+is treated as ordinary text instead of an executable SQL statement.
+
+### Database Availability
+
+The application handles PostgreSQL connection failures through repository exception handling, providing an error message when the database server is unavailable.
+
+## Author
+
+Developed as part of the Advanced Programming Methods laboratory at **Babeș-Bolyai University**, Faculty of Mathematics and Computer Science.
+
