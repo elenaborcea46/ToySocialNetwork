@@ -7,6 +7,9 @@ import exceptions.RepositoryException;
 import exceptions.ValidationException;
 import repository.Repository;
 
+import util.paging.Page;
+import util.paging.Pageable;
+import repository.PagingRepository;
 
 
 import java.util.List;
@@ -153,5 +156,24 @@ public class UserService {
      */
     public List<User> findUsers(Predicate<User> filter){
         return userRepository.findAll(filter);
+    }
+
+
+    /**
+     * Retrieves a page of users from a repository that supports pagination.
+     *
+     * @param pageable the pagination request
+     * @return a page containing users and their total count
+     * @throws UnsupportedOperationException if pagination is not supported
+     */
+    public Page<User> getUsersOnPage(Pageable pageable){
+        if(userRepository instanceof PagingRepository<?, ?>){
+            @SuppressWarnings("unchecked")
+                    PagingRepository<Long, User> pagingRepository = (PagingRepository<Long, User>) userRepository;
+
+            return pagingRepository.findAllOnPage(pageable);
+        }
+
+        throw new UnsupportedOperationException("Pagination is only supported for DATABASE repositories.");
     }
 }

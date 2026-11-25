@@ -5,7 +5,10 @@ import domain.Tuple;
 import domain.User;
 import exceptions.RepositoryException;
 import exceptions.ValidationException;
+import repository.FriendshipDatabaseRepository;
 import repository.Repository;
+import util.paging.Page;
+import util.paging.Pageable;
 import validation.Validator;
 
 import java.time.LocalDateTime;
@@ -122,6 +125,14 @@ public class FriendshipService {
         return friendshipRepository.findAll();
     }
 
+    /**
+     * Updates an existing friendship's information.
+     *
+     * @param idUser1 first user identifier
+     * @param idUser2 second user identifier
+     * @param friendsFrom date and time when the friendship started
+     * @throws RepositoryException if the friendship does not exist
+     */
     public void updateFriendship(Long idUser1, Long idUser2, LocalDateTime friendsFrom){
         Friendship friendship = new Friendship(idUser1, idUser2, friendsFrom);
 
@@ -131,4 +142,28 @@ public class FriendshipService {
             throw new RepositoryException("Prietenia nu exista!");
         }
     }
+
+
+
+    /**
+     * Retrieves a page of friends for a specified user.
+     *
+     * @param userId the ID of the user whose friends are requested
+     * @param pageable the pagination request containing the page number and size
+     * @return a page containing the user's friends and their total count
+     * @throws UnsupportedOperationException if the repository does not support pagination
+     */
+    public Page<User> getFriendsOnPage(Long userId, Pageable pageable) {
+
+        if (friendshipRepository instanceof FriendshipDatabaseRepository dbRepository) {
+            return dbRepository.findFriendsOnPage(userId, pageable);
+        }
+
+        throw new UnsupportedOperationException(
+                "Pagination is only supported for DATABASE repositories."
+        );
+    }
+
+
+
 }
