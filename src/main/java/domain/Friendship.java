@@ -31,7 +31,7 @@ public class Friendship extends Entity<Tuple<Long, Long>>{
      *
      * @param idUser1 first user identifier
      * @param idUser2 second user identifier
-     * @param friendsFrom date and time when the frienship started
+     * @param friendsFrom date and time when the frieship started
      */
    public Friendship(Long idUser1, Long idUser2, LocalDateTime friendsFrom){
         if(idUser1 == null || idUser2 == null){
