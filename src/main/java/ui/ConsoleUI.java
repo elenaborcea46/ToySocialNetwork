@@ -9,6 +9,8 @@ import exceptions.RepositoryException;
 import exceptions.ValidationException;
 
 import criteria.UserCriteria;
+import util.paging.Page;
+import util.paging.Pageable;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -36,6 +38,7 @@ public class ConsoleUI {
     private final UserService userService;
     private final FriendshipService friendshipService;
     private final NetworkService networkService;
+    private final int pageSize;
 
     private final Scanner scanner = new Scanner(System.in);
 
@@ -46,10 +49,15 @@ public class ConsoleUI {
      * @param friendshipService the service responsible for friendships
      * @param networkService the service responsible for network analysis
      */
-    public ConsoleUI(UserService userService, FriendshipService friendshipService, NetworkService networkService) {
+    public ConsoleUI(UserService userService, FriendshipService friendshipService, NetworkService networkService, int pageSize) {
+        if (pageSize <= 0) {
+            throw new IllegalArgumentException("Page size must be positive.");
+        }
+
         this.userService = userService;
         this.friendshipService = friendshipService;
         this.networkService = networkService;
+        this.pageSize = pageSize;
     }
 
     /**
@@ -68,6 +76,8 @@ public class ConsoleUI {
         System.out.println("9. Numar comunitati");
         System.out.println("10. Cea mai sociabila comunitate");
         System.out.println("11. Testare filtrare utilizatori");
+        System.out.println("12. Afiseaza utilizatori paginati");
+        System.out.println("13. Afiseaza prietenii unui utilizator paginati");
         System.out.println("0. Iesire");
         System.out.print("Alege o optiune: ");
     }
@@ -133,6 +143,58 @@ public class ConsoleUI {
         StreamSupport.stream(userService.getAllUsers().spliterator(), false).forEach(System.out::println);
     }
 
+    /**
+     * Displays users page by page and allows navigation.
+     *
+     * @param pageSize the number of users displayed per page
+     */
+    private void showUsersPaginated(int pageSize){
+        int pageNumber = 0;
+
+        while(true){
+            Pageable pageable = new Pageable(pageNumber, pageSize);
+            Page<User> page = userService.getUsersOnPage(pageable);
+
+            long totalUsers = page.getTotalNumberOfElements();
+            long totalPages = (totalUsers + pageSize - 1)/pageSize;
+
+            System.out.println("\n--- USERS ---");
+
+            for(User user: page.getElementsOnPage()){
+                System.out.println(user);
+            }
+
+            System.out.println("Pagina " + (pageNumber + 1) + " din " + Math.max(1, totalPages));
+
+            System.out.println("n - Next | p - Previous | q - Quit");
+            String option = scanner.nextLine().trim().toLowerCase();
+
+            switch (option) {
+                case "n":
+                    if (pageNumber + 1 < totalPages){
+                        pageNumber++;
+                    } else{
+                        System.out.println("You are on the last page.");
+                    }
+                    break;
+
+                case "p":
+                    if (pageNumber > 0){
+                        pageNumber--;
+                    } else{
+                        System.out.println("You are on the first page.");
+                    }
+                    break;
+
+                case "q":
+                    return;
+
+                default:
+                    System.out.println("Invalid option.");
+            }
+        }
+    }
+
 
     /**
      * Reads two user identifiers and requests
@@ -191,6 +253,71 @@ public class ConsoleUI {
     private void printFriendships() {
         StreamSupport.stream(friendshipService.getAllFriendships().spliterator(),false).forEach(System.out::println);
     }
+
+
+    /**
+     * Displays a user's friends page by page and allows navigation.
+     *
+     * @param pageSize the number of friends displayed per page
+     */
+    private void showFriendsPaginated(int pageSize) {
+        System.out.print("User ID: ");
+        Long userId = Long.parseLong(scanner.nextLine());
+
+        userService.findUser(userId);
+
+        int pageNumber = 0;
+
+        while (true) {
+            Pageable pageable = new Pageable(pageNumber, pageSize);
+            Page<User> page =
+                    friendshipService.getFriendsOnPage(userId, pageable);
+
+            long totalFriends = page.getTotalNumberOfElements();
+            long totalPages = (totalFriends + pageSize - 1) / pageSize;
+
+            System.out.println("\n--- FRIENDS ---");
+
+            if (page.getElementsOnPage().isEmpty()) {
+                System.out.println("No friends on this page.");
+            } else {
+                for (User friend : page.getElementsOnPage()) {
+                    System.out.println(friend);
+                }
+            }
+
+            System.out.println("Pagina " + (pageNumber + 1)
+                    + " din " + Math.max(1, totalPages));
+
+            System.out.println("n - Next | p - Previous | q - Quit");
+            String option = scanner.nextLine().trim().toLowerCase();
+
+            switch (option) {
+                case "n":
+                    if (pageNumber + 1 < totalPages) {
+                        pageNumber++;
+                    } else {
+                        System.out.println("You are on the last page.");
+                    }
+                    break;
+
+                case "p":
+                    if (pageNumber > 0) {
+                        pageNumber--;
+                    } else {
+                        System.out.println("You are on the first page.");
+                    }
+                    break;
+
+                case "q":
+                    return;
+
+                default:
+                    System.out.println("Invalid option.");
+            }
+        }
+    }
+
 
     private void testUserFilters(){
         Predicate<User> startsWithP = UserCriteria.lastNameStartsWith("P");
@@ -278,6 +405,14 @@ public class ConsoleUI {
 
                     case "11":
                         testUserFilters();
+                        break;
+
+                    case "12":
+                        showUsersPaginated(pageSize);
+                        break;
+
+                    case "13":
+                        showFriendsPaginated(pageSize);
                         break;
 
                     case "0":

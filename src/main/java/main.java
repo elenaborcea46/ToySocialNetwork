@@ -124,10 +124,21 @@ public class main {
             String username = null;
             String password = null;
 
+            int pageSize = 5;
+
             if(type ==  RepositoryType.DATABASE){
                 url = getRequiredProperty(properties, "db.url");
                 username = getRequiredProperty(properties, "db.user");
                 password = getRequiredProperty(properties, "db.password");
+
+                pageSize = Integer.parseInt(getRequiredProperty(properties, "paging.pageSize"));
+
+                if (pageSize <= 0) {
+                    throw new IllegalArgumentException(
+                            "paging.pageSize must be greater than 0."
+
+                    );
+                }
             }
 
             Validator<User> userValidator = new UserValidator();
@@ -170,7 +181,8 @@ public class main {
             ConsoleUI ui = new ConsoleUI(
                     userService,
                     friendshipService,
-                    networkService
+                    networkService,
+                    pageSize
             );
 
             if (type == RepositoryType.DATABASE) {
