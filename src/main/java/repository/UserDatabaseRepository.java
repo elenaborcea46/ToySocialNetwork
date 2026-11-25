@@ -1,6 +1,8 @@
 package repository;
 
 import domain.User;
+import util.paging.Page;
+import util.paging.Pageable;
 import validation.Validator;
 
 import java.sql.*;
@@ -23,7 +25,7 @@ import exceptions.RepositoryException;
  * @see Repository
  * @see User
  */
-public class UserDatabaseRepository implements Repository<Long, User>{
+public class UserDatabaseRepository implements PagingRepository<Long, User>{
 
     private final Validator<User> validator;
     private final String url;
@@ -258,5 +260,62 @@ public class UserDatabaseRepository implements Repository<Long, User>{
          } catch(SQLException e){
              throw new RepositoryException("Error updating user from database: " + e.getMessage());
          }
+    }
+
+
+    /**
+     * Retrieves a page of users from the database, ordered by ID.
+     * Uses SQL LIMIT and OFFSET for pagination and COUNT(*)
+     * to determine the total number of users.
+     * Both queries are executed using the same database connection.
+     *
+     * @param pageable the pagination request containing the page number and size
+     * @return a page containing the requested users and the total number of users
+     * @throws RepositoryException if a database error occurs
+     */
+    @Override
+    public Page<User> findAllOnPage(Pageable pageable){
+
+        List<User> usersOnPage = new ArrayList<>();
+        long totalUsers = 0;
+
+        String sql = "SELECT id, first_name, last_name FROM users ORDER BY id LIMIT ? OFFSET ?";
+        String sql_total = "SELECT COUNT(*) FROM users";
+
+        try(Connection connection = DriverManager.getConnection(url, user, password);
+            PreparedStatement statement1 = connection.prepareStatement(sql);
+            PreparedStatement statement2 = connection.prepareStatement(sql_total)){
+
+            statement1.setInt(1, pageable.getPageSize());
+            statement1.setLong(2, (long) pageable.getPageSize() * pageable.getPageNumber());
+
+            try(ResultSet resultSet = statement1.executeQuery()) {
+
+                while (resultSet.next()) {
+                    Long id = resultSet.getLong("id");
+                    String firstName = resultSet.getString("first_name");
+                    String lastName = resultSet.getString("last_name");
+
+                    usersOnPage.add(new User(id, firstName, lastName));
+                }
+
+            }
+
+            try(ResultSet resultSet = statement2.executeQuery()) {
+
+                if (resultSet.next()) {
+                    totalUsers = resultSet.getLong(1);
+                }
+            }
+
+            return new Page<>(usersOnPage, totalUsers);
+
+
+
+        } catch(SQLException e){
+            throw new RepositoryException("Failed to retrieve users page: " + e.getMessage());
+        }
+
+
     }
 }

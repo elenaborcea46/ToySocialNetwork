@@ -2,6 +2,9 @@ package repository;
 
 import domain.Friendship;
 import domain.Tuple;
+import domain.User;
+import util.paging.Page;
+import util.paging.Pageable;
 import validation.Validator;
 
 import java.sql.*;
@@ -31,7 +34,7 @@ public class FriendshipDatabaseRepository implements Repository<Tuple<Long, Long
     /**
      * Creates a database repository for friendships.
      *
-     * @param validator validator for frienship entities
+     * @param validator validator for friendship entities
      */
     public FriendshipDatabaseRepository(Validator<Friendship> validator, String url, String user, String password) {
 
@@ -259,5 +262,65 @@ public class FriendshipDatabaseRepository implements Repository<Tuple<Long, Long
                     "Error updating friendship with ID " + entity.getId(), e
             );
         }
+    }
+
+    /**
+     * Retrieves a page of friends for a specified user.
+     * Uses a SQL JOIN to retrieve user details and
+     * LIMIT and OFFSET to paginate the results.
+     * Counts the total number of friendships separately
+     * using the same database connection.
+     *
+     * @param userId the ID of the user whose friends are requested
+     * @param pageable the pagination request containing the page number and size
+     * @return a page containing the user's friends and their total count
+     * @throws RepositoryException if a database error occurs
+     */
+    public Page<User> findFriendsOnPage(Long userId, Pageable pageable){
+
+        List<User> friendsOnPage = new ArrayList<>();
+        long totalFriends = 0;
+
+        String sql = "SELECT u.id, u.first_name, u.last_name FROM friendships f JOIN users u ON (f.id1 = ? AND u.id = f.id2) OR (f.id2 = ? AND u.id = f.id1) WHERE f.id1 = ? OR f.id2 = ? ORDER BY u.id LIMIT ? OFFSET ?";
+        String sql_count = "SELECT COUNT(*) FROM friendships WHERE id1 = ? OR id2 = ?";
+
+        try(Connection connection = DriverManager.getConnection(url, user, password);
+            PreparedStatement statement1 = connection.prepareStatement(sql);
+            PreparedStatement statement2 = connection.prepareStatement(sql_count)
+            ){
+
+            statement1.setLong(1, userId);
+            statement1.setLong(2, userId);
+            statement1.setLong(3, userId);
+            statement1.setLong(4, userId);
+
+            statement1.setInt(5, pageable.getPageSize());
+            statement1.setLong(6, (long) pageable.getPageNumber() *  pageable.getPageSize());
+
+            try(ResultSet resultSet = statement1.executeQuery()){
+                while (resultSet.next()) {
+                    Long id = resultSet.getLong("id");
+                    String firstName = resultSet.getString("first_name");
+                    String lastName = resultSet.getString("last_name");
+
+                    friendsOnPage.add(new User(id, firstName, lastName));
+                }
+            }
+
+            statement2.setLong(1, userId);
+            statement2.setLong(2, userId);
+
+            try(ResultSet resultSet = statement2.executeQuery()){
+                if(resultSet.next()) {
+                    totalFriends = resultSet.getLong(1);
+                }
+            }
+
+            return new Page<>(friendsOnPage, totalFriends);
+
+        } catch(SQLException e) {
+            throw new RepositoryException("Failed to retrieve friendships page: " + e.getMessage());
+        }
+
     }
 }
